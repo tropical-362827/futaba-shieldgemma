@@ -1,6 +1,6 @@
 # futaba-shieldgemma
 
-ふたば☆ちゃんねるのスレッドを定期的に取得し、shield-gemmaで画像を判定するシステム
+ふたば☆ちゃんねるのスレッドを監視し、shield-gemmaで画像を判定するシステム
 
 ## 機能
 
