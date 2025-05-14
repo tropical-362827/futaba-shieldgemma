@@ -1,0 +1,24 @@
+[project]
+name = "futaba_shieldgemma"
+version = "0.1.0"
+description = "ふたば☆ちゃんねるのスレッドを定期的に取得し、shield-gemmaで画像を判定するシステム"
+authors = [
+    {name = "tropical-362827"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "transformers (>=4.51.3,<5.0.0)",
+    "pillow (>=11.2.1,<12.0.0)",
+    "requests (>=2.32.3,<3.0.0)",
+    "torch (>=2.7.0,<3.0.0)",
+    "torchvision (>=0.22.0,<0.23.0)",
+    "torchaudio (>=2.7.0,<3.0.0)"
+]
+
+[project.scripts]
+futaba-shieldgemma = "futaba_shieldgemma.cli:run_cli"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
