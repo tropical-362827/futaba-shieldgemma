@@ -103,12 +103,6 @@ futaba-shieldgemma --thread 12345678 --classify-all
 futaba-shieldgemma --thread 12345678 --classify-all
 ```
 
-## 機能拡張予定
-
-- ふたば☆ちゃんねるの仕様変更に対応できる柔軟性の向上
-- 画像判定結果のローカルストレージへの保存機能の実装
-- Shield-Gemma以外の画像分類モデルにも対応
-
 ## ライセンス
 
 このプロジェクトは MIT ライセンスのもとで提供されています
