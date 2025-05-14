@@ -45,6 +45,7 @@ futaba-shieldgemma --thread <スレッド番号> [オプション]
 - `--no-classify`: 画像分類を無効にする（スレッド監視のみ実行）
 - `--threshold`: 分類閾値（0.0〜1.0）。この値以上で「要注意」判定。デフォルト: 0.5
 - `--temp-dir`: 画像の一時保存先ディレクトリを指定
+- `--classify-all`: 初回取得時にすべての既存画像を分類する（デフォルトでは分類しない）
 
 ### 例
 
@@ -60,6 +61,9 @@ futaba-shieldgemma --thread 12345678 --domain img.2chan.net --board f --threshol
 
 # 画像分類を無効にして監視のみ実行
 futaba-shieldgemma --thread 12345678 --no-classify
+
+# 既存の画像も含めて全ての画像を分類
+futaba-shieldgemma --thread 12345678 --classify-all
 ```
 
 ## 構成
@@ -89,6 +93,15 @@ futaba-shieldgemma --thread 12345678 --no-classify
 ```
 
 分類閾値は`--threshold`オプションで調整できます。値が低いほど厳しく判定されます。
+
+### 既存画像のスキップ
+
+デフォルトでは、スレッド監視を開始した時点で既にスレッドに存在している画像は分類しません。これはCPUやメモリの使用を抑えるためです。しかし、`--classify-all`オプションを指定することで、既存の画像も含めてすべての画像を分類させることができます。
+
+```bash
+# 既存画像も含めて分類する
+futaba-shieldgemma --thread 12345678 --classify-all
+```
 
 ## 機能拡張予定
 

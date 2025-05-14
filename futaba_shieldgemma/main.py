@@ -98,7 +98,7 @@ def parse_args():
         "--threshold",
         type=float,
         default=0.5,
-        help="分類の閾値 (0.0～1.0) - この値以上で要注意判定"
+        help="分類の閾値 (0.0～1.0) - この値以上で「要注意」判定"
     )
     
     parser.add_argument(
@@ -106,6 +106,12 @@ def parse_args():
         type=str,
         default=None,
         help="画像の一時保存先ディレクトリ"
+    )
+    
+    parser.add_argument(
+        "--classify-all",
+        action="store_true",
+        help="初回取得時にすべての既存画像を分類する（デフォルトでは分類しない）"
     )
     
     return parser.parse_args()
@@ -223,16 +229,22 @@ def main():
                 
                 # 画像を分類（--no-classifyが指定されていない場合）
                 if not args.no_classify and classifier:
-                    logger.info("画像の分類を開始します...")
-                    results = classify_thread_images(
-                        classifier, 
-                        image_urls, 
-                        threshold=args.threshold,
-                        temp_dir=temp_dir
-                    )
-                    
-                    # 処理済みの画像IDを記録
-                    processed_image_ids.update(results.keys())
+                    # classify-allオプションが指定された場合のみ既存の画像を分類
+                    if args.classify_all:
+                        logger.info(f"既存の画像 {len(image_urls)} 件の分類を開始します...")
+                        results = classify_thread_images(
+                            classifier, 
+                            image_urls, 
+                            threshold=args.threshold,
+                            temp_dir=temp_dir
+                        )
+                        
+                        # 処理済みの画像IDを記録
+                        processed_image_ids.update(results.keys())
+                    else:
+                        logger.info("既存の画像はスキップされました (--classify-all オプションで分類可能)")
+                        # すべての画像を処理済みとしてマーク
+                        processed_image_ids.update(img[0] for img in image_urls)
                 
                 if args.verbose:
                     for post_id, filename, url in image_urls[:5]:  # 最初の5件だけ表示
@@ -295,6 +307,9 @@ def main():
                             
                             # 処理済みの画像IDを記録
                             processed_image_ids.update(results.keys())
+                        else:
+                            # 新しい画像が全て処理済みの場合
+                            logger.info("全ての新着画像は既に処理済みです")
                     
                     if args.verbose:
                         for post_id, filename, url in new_images[:5]:  # 最初の5件だけ表示

@@ -164,7 +164,7 @@ class ShieldGemmaClassifier:
         if all(v < 0 for v in result.values()):
             return "分類失敗"
         
-        values = [f"{category} ({probability:.4f})" for category, probability in result.items()]
+        values = [f"{category} ({probability*100:.2f})" for category, probability in result.items()]
         values = ", ".join(values)
 
         detected = []
