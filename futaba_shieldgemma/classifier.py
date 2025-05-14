@@ -92,9 +92,12 @@ class ShieldGemmaClassifier:
             self.load_model()
         
         try:
+            # 明示的にRGBに変換
+            image = image.convert("RGB")
+
             # 画像の前処理
             model_inputs = self.processor(images=[image], return_tensors="pt")
-            
+
             # 推論の実行
             with torch.inference_mode():
                 scores = self.model(**model_inputs)
