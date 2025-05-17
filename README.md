@@ -24,7 +24,7 @@
 poetry install
 
 # 直接実行
-python -m futaba_shieldgemma --thread <スレッド番号>
+python -m futaba_shieldgemma --url <スレッドURL>
 ```
 
 ## 使い方
@@ -32,38 +32,37 @@ python -m futaba_shieldgemma --thread <スレッド番号>
 ### コマンドライン
 
 ```bash
-futaba-shieldgemma --thread <スレッド番号> [オプション]
+futaba-shieldgemma --url <スレッドURL> [オプション]
 ```
 
 ### オプション
 
-- `--thread` (必須): 監視するスレッド番号
-- `--domain`: ドメイン。デフォルト: `may.2chan.net`
-- `--board`: 板名。デフォルト: `b`
+- `--url` (必須): 監視するスレッドのURL (例: https://may.2chan.net/b/res/00000.htm)
 - `--interval`: 更新間隔（秒）。デフォルト: 10秒
 - `--verbose`: 詳細ログを表示
 - `--no-classify`: 画像分類を無効にする（スレッド監視のみ実行）
 - `--threshold`: 分類閾値（0.0〜1.0）。この値以上で「要注意」判定。デフォルト: 0.5
 - `--temp-dir`: 画像の一時保存先ディレクトリを指定
 - `--classify-all`: 初回取得時にすべての既存画像を分類する（デフォルトでは分類しない）
+- `--handler`: 分類結果を処理するハンドラーの種類（現在は'default'のみ対応）
 
 ### 例
 
 ```bash
-# 雑談板のスレッド番号12345678を監視
-futaba-shieldgemma --thread 12345678
+# 雑談板のスレッドを監視
+futaba-shieldgemma --url https://may.2chan.net/b/res/12345678.htm
 
 # 詳細ログを表示して30秒間隔で監視
-futaba-shieldgemma --thread 12345678 --interval 30 --verbose
+futaba-shieldgemma --url https://may.2chan.net/b/res/12345678.htm --interval 30 --verbose
 
 # 二次創作板を監視して画像分類閾値を0.7に設定
-futaba-shieldgemma --thread 12345678 --domain img.2chan.net --board f --threshold 0.7
+futaba-shieldgemma --url https://img.2chan.net/f/res/12345678.htm --threshold 0.7
 
 # 画像分類を無効にして監視のみ実行
-futaba-shieldgemma --thread 12345678 --no-classify
+futaba-shieldgemma --url https://may.2chan.net/b/res/12345678.htm --no-classify
 
 # 既存の画像も含めて全ての画像を分類
-futaba-shieldgemma --thread 12345678 --classify-all
+futaba-shieldgemma --url https://may.2chan.net/b/res/12345678.htm --classify-all
 ```
 
 ## 構成
