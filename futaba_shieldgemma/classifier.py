@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import os
 import logging
 import tempfile
@@ -26,7 +23,7 @@ class ShieldGemmaClassifier:
         self.model_id = model_id
         self.cache_dir = cache_dir
         self.loaded = False
-        self.categories = ["性的表現", "危険なコンテンツ", "暴力・グロテスク"]
+        self.categories = ["危険なコンテンツ", "性的表現", "暴力・グロテスク"]
         
         # 遅延ロード - load_model()で明示的にロードするまで実際のモデルはロードしない
         logger.info(f"Shield-Gemma分類モデル {model_id} を使用します")

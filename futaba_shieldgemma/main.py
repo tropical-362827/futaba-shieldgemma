@@ -1,12 +1,11 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
 import argparse
 import logging
 import time
 import os
+import re
 import tempfile
-from typing import Dict, List, Any, Optional
+import urllib.parse
+from typing import Dict, List, Any, Optional, Tuple
 
 from futaba_shieldgemma.fetcher import FutabaFetcher
 from futaba_shieldgemma.parser import FutabaParser, FutabaDisplay
@@ -50,22 +49,48 @@ def setup_logging(verbose: bool = False):
 # コード実行用のロガー
 logger = logging.getLogger(__name__)
 
+def parse_futaba_url(url: str) -> Tuple[str, str, str]:
+    """
+    ふたば☆ちゃんねるのURLからドメイン、板名、スレッドIDを抽出する
+    
+    Args:
+        url: ふたば☆ちゃんねるのスレッドURL (例: https://may.2chan.net/b/res/00000.htm)
+        
+    Returns:
+        (ドメイン, 板名, スレッドID) のタプル
+        
+    Raises:
+        ValueError: 無効なURLの場合
+    """
+    # URLパース
+    parsed_url = urllib.parse.urlparse(url)
+    
+    # ドメイン部分が*.2chan.netかチェック
+    domain = parsed_url.netloc
+    if not domain.endswith('.2chan.net'):
+        raise ValueError(f"無効なドメインです: {domain} (*.2chan.netドメインのみ対応しています)")
+    
+    # パスからボード名とスレッドIDを抽出
+    path_pattern = r'/([^/]+)/res/(\d+)\.htm'
+    match = re.match(path_pattern, parsed_url.path)
+    
+    if not match:
+        raise ValueError(f"無効なふたば☆ちゃんねるのスレッドURLです: {url}")
+    
+    board = match.group(1)
+    thread_id = match.group(2)
+    
+    return domain, board, thread_id
+
 def parse_args():
     """コマンドライン引数をパースする"""
     parser = argparse.ArgumentParser(description="ふたば☆ちゃんねるのスレッドを監視するツール")
     
     parser.add_argument(
-        "--domain",
-        type=str,
-        default="may.2chan.net",
-        help="ふたば☆ちゃんねるのドメイン (例: may.2chan.net)"
-    )
-    
-    parser.add_argument(
-        "--thread",
+        "--url",
         type=str,
         required=True,
-        help="スレッド番号"
+        help="ふたば☆ちゃんねるのスレッドURL (例: https://may.2chan.net/b/res/00000.htm)"
     )
     
     parser.add_argument(
@@ -73,13 +98,6 @@ def parse_args():
         type=int,
         default=10,
         help="スレッド取得の間隔（秒）"
-    )
-    
-    parser.add_argument(
-        "--board",
-        type=str,
-        default="b",
-        help="板名 (例: b)"
     )
     
     parser.add_argument(
@@ -174,8 +192,16 @@ def main():
     # ロギングの設定
     setup_logging(args.verbose)
     
+    # URLからドメイン、板、スレッドIDを抽出
+    try:
+        domain, board, thread = parse_futaba_url(args.url)
+    except ValueError as e:
+        logger.error(str(e))
+        return
+    
     logger.info(f"ふたば☆ちゃんねる監視ツールを開始します")
-    logger.info(f"ドメイン: {args.domain}, スレッド: {args.thread}, 板: {args.board}, 間隔: {args.interval}秒")
+    logger.info(f"URL: {args.url}")
+    logger.info(f"ドメイン: {domain}, 板: {board}, スレッド: {thread}, 間隔: {args.interval}秒")
     
     # 一時ディレクトリの作成
     if args.temp_dir:
@@ -188,7 +214,7 @@ def main():
     logger.info(f"画像の一時保存先: {temp_dir}")
     
     # 初期化
-    fetcher = FutabaFetcher(domain=args.domain, board=args.board)
+    fetcher = FutabaFetcher(domain=domain, board=board)
     parser = FutabaParser()
     display = FutabaDisplay(verbose=args.verbose)
     
@@ -207,7 +233,7 @@ def main():
     
     # 最初のスレッド取得
     logger.info("初回スレッド取得を実行します...")
-    thread_data = fetcher.fetch_thread(args.thread)
+    thread_data = fetcher.fetch_thread(thread)
     
     if thread_data:
         # スレッドをパースして表示
@@ -262,7 +288,7 @@ def main():
             time.sleep(args.interval)
             
             logger.info("スレッドの更新を確認しています...")
-            thread_data = fetcher.fetch_thread(args.thread)
+            thread_data = fetcher.fetch_thread(thread)
             
             if not thread_data:
                 logger.warning("スレッド取得に失敗しました。次の間隔で再試行します。")
