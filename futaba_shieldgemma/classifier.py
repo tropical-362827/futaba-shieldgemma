@@ -1,8 +1,6 @@
-import os
 import logging
-import tempfile
 import requests
-from typing import Dict, Any, List, Tuple, Optional
+from typing import Dict, Any, Optional
 import torch
 from PIL import Image
 from transformers import AutoProcessor, ShieldGemma2ForImageClassification
@@ -174,46 +172,3 @@ class ShieldGemmaClassifier:
             return f"要注意: {detected} {values}"
         else:
             return f"問題なし: {values}"
-
-
-def download_images_from_thread(image_urls: List[Tuple[str, str, str]], temp_dir: Optional[str] = None) -> Dict[str, str]:
-    """
-    スレッドから取得した画像URLリストから画像をダウンロードする
-    
-    Args:
-        image_urls: (投稿番号, ファイル名, URL)のタプルのリスト
-        temp_dir: 一時ディレクトリのパス（Noneの場合は自動生成）
-    
-    Returns:
-        投稿番号をキー、一時ファイルパスを値とする辞書
-    """
-    # 一時ディレクトリを準備
-    if temp_dir is None:
-        temp_dir = tempfile.mkdtemp(prefix="futaba_images_")
-    elif not os.path.exists(temp_dir):
-        os.makedirs(temp_dir)
-    
-    logger.debug(f"画像を一時ディレクトリにダウンロードします: {temp_dir}")
-    
-    downloaded_files = {}
-    
-    for post_id, filename, url in image_urls:
-        try:
-            # 画像をダウンロード
-            response = requests.get(url, stream=True, timeout=10)
-            response.raise_for_status()
-            
-            # 一時ファイルに保存
-            temp_file_path = os.path.join(temp_dir, filename)
-            with open(temp_file_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            
-            downloaded_files[post_id] = temp_file_path
-            logger.debug(f"画像をダウンロードしました: {post_id} -> {temp_file_path}")
-            
-        except Exception as e:
-            logger.error(f"画像のダウンロード中にエラーが発生しました: {post_id}, {url}, {e}")
-    
-    logger.info(f"{len(downloaded_files)}/{len(image_urls)} 件の画像をダウンロードしました")
-    return downloaded_files

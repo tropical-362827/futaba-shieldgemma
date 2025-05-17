@@ -5,11 +5,13 @@ import os
 import re
 import tempfile
 import urllib.parse
+import requests
 from typing import Dict, List, Any, Optional, Tuple
 
 from futaba_shieldgemma.fetcher import FutabaFetcher
 from futaba_shieldgemma.parser import FutabaParser, FutabaDisplay
-from futaba_shieldgemma.classifier import ShieldGemmaClassifier, download_images_from_thread
+from futaba_shieldgemma.classifier import ShieldGemmaClassifier
+from futaba_shieldgemma.handlers import ClassificationHandler, DefaultHandler
 
 # ロギングの設定 - プログラム全体で一度だけ設定する
 def setup_logging(verbose: bool = False):
@@ -132,11 +134,21 @@ def parse_args():
         help="初回取得時にすべての既存画像を分類する（デフォルトでは分類しない）"
     )
     
+    parser.add_argument(
+        "--handler",
+        type=str,
+        default="default",
+        choices=["default"],
+        help="分類結果を処理するハンドラーの種類 (現在は'default'のみ対応)"
+    )
+    
     return parser.parse_args()
 
 def classify_thread_images(
     classifier: ShieldGemmaClassifier,
     image_urls: List[tuple],
+    thread_url: str,
+    handler: ClassificationHandler,
     threshold: float = 0.5,
     temp_dir: Optional[str] = None
 ) -> Dict[str, Dict[str, Any]]:
@@ -146,6 +158,8 @@ def classify_thread_images(
     Args:
         classifier: ShieldGemmaClassifierインスタンス
         image_urls: (投稿番号, ファイル名, URL)のタプルのリスト
+        thread_url: スレッドURL
+        handler: 分類結果を処理するハンドラー
         threshold: 分類閾値
         temp_dir: 一時ディレクトリ
     
@@ -155,33 +169,57 @@ def classify_thread_images(
     if not image_urls:
         return {}
     
-    # 画像をダウンロード
-    downloaded_files = download_images_from_thread(image_urls, temp_dir)
+    # 一時ディレクトリを準備
+    if temp_dir is None:
+        temp_dir = tempfile.mkdtemp(prefix="futaba_images_")
+    elif not os.path.exists(temp_dir):
+        os.makedirs(temp_dir)
     
     # 分類結果を格納する辞書
     classification_results = {}
     
-    for post_id, file_path in downloaded_files.items():
+    # 1枚ずつ画像を処理
+    for post_id, filename, image_url in image_urls:
         try:
-            logger.info(f"投稿 #{post_id} の画像を分類します")
-
-            # 画像を分類
-            result = classifier.classify_image_file(file_path)
+            logger.info(f"投稿 #{post_id} の画像をダウンロードして分類します: {image_url}")
             
-            # 要約を生成
-            summary = classifier.get_classification_summary(result, threshold)
+            # 画像の一時ファイルパス
+            temp_file_path = os.path.join(temp_dir, filename)
             
-            # 結果を保存
-            classification_results[post_id] = {
-                "file_path": file_path,
-                "results": result,
-                "summary": summary
-            }
-            
-            logger.info(f"投稿 #{post_id} の画像を分類しました: {summary}")
+            try:
+                # 画像をダウンロード
+                response = requests.get(image_url, stream=True, timeout=10)
+                response.raise_for_status()
+                
+                # 一時ファイルに保存
+                with open(temp_file_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        f.write(chunk)
+                
+                logger.debug(f"画像をダウンロードしました: {post_id} -> {temp_file_path}")
+                
+                # 画像を分類
+                result = classifier.classify_image_file(temp_file_path)
+                
+                # 要約を生成
+                summary = classifier.get_classification_summary(result, threshold)
+                
+                # 結果を保存
+                result_data = {
+                    "file_path": temp_file_path,
+                    "results": result,
+                    "summary": summary
+                }
+                classification_results[post_id] = result_data
+                
+                # ハンドラーを使用して結果を処理
+                handler.handle_result(post_id, result_data, image_url, thread_url)
+                
+            except Exception as e:
+                logger.error(f"画像のダウンロードまたは分類中にエラーが発生しました: {image_url}, {e}")
             
         except Exception as e:
-            logger.error(f"投稿 #{post_id} の画像分類中にエラーが発生しました: {e}")
+            logger.error(f"投稿 #{post_id} の画像処理中にエラーが発生しました: {e}")
     
     return classification_results
 
@@ -217,6 +255,14 @@ def main():
     fetcher = FutabaFetcher(domain=domain, board=board)
     parser = FutabaParser()
     display = FutabaDisplay(verbose=args.verbose)
+    
+    # ハンドラーの初期化
+    if args.handler == "default":
+        handler = DefaultHandler(verbose=args.verbose)
+    else:
+        # 将来的に他のハンドラーを追加する場合は、ここで分岐
+        logger.warning(f"不明なハンドラータイプ: {args.handler}, デフォルトハンドラーを使用します")
+        handler = DefaultHandler(verbose=args.verbose)
     
     # 画像分類の初期化（--no-classifyが指定されていない場合）
     classifier = None
@@ -260,7 +306,9 @@ def main():
                         logger.info(f"既存の画像 {len(image_urls)} 件の分類を開始します...")
                         results = classify_thread_images(
                             classifier, 
-                            image_urls, 
+                            image_urls,
+                            thread_url=args.url,
+                            handler=handler,
                             threshold=args.threshold,
                             temp_dir=temp_dir
                         )
@@ -326,7 +374,9 @@ def main():
                             logger.info(f"{len(unprocessed_images)} 件の新着画像を分類します...")
                             results = classify_thread_images(
                                 classifier, 
-                                unprocessed_images, 
+                                unprocessed_images,
+                                thread_url=args.url,
+                                handler=handler,
                                 threshold=args.threshold,
                                 temp_dir=temp_dir
                             )
