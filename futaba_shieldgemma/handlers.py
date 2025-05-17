@@ -68,7 +68,7 @@ class DefaultHandler(ClassificationHandler):
             probabilities = getattr(classification_results, "probabilities", None)
             
             if probabilities is not None:
-                categories = ["Sexually Explicit", "Dangerous Content", "Violence & Gore"]
+                categories = ["Dangerous Content", "Sexually Explicit", "Violence & Gore"]
                 yes_no_labels = ["Yes", "No"]
                 
                 for i, probs in enumerate(probabilities):
